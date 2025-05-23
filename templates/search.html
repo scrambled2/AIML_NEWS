@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}AI/ML News Aggregator - Latest Articles{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>Latest AI/ML News</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <form action="{{ url_for('poll_now') }}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-primary">Poll Feeds Now</button>
+        </form>
+        <form action="{{ url_for('process_pending') }}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-secondary">Process Pending</button>
+        </form>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Filters</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('index') }}" method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="feed_id" class="form-label">Source</label>
+                <select name="feed_id" id="feed_id" class="form-select">
+                    <option value="">All Sources</option>
+                    {% for feed in feeds %}
+                    <option value="{{ feed.id }}" {% if selected_feed_id == feed.id %}selected{% endif %}>
+                        {{ feed.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="keyword" class="form-label">Keyword</label>
+                <input type="text" class="form-control" id="keyword" name="keyword" placeholder="Filter by keyword" value="{{ selected_keyword or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label for="per_page" class="form-label">Items Per Page</label>
+                <select name="per_page" id="per_page" class="form-select">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 20 or not per_page %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Side Panel Layout -->
+<div class="side-panel-layout">
+    <!-- Article List -->
+    <div class="article-list-container" id="article-list">
+        {% if articles %}
+            {% for article in articles %}
+            <div class="card mb-3 article-card" id="article-card-{{ article.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <small class="text-muted">{{ article.feed_name }}</small>
+                    <small class="text-muted">{{ format_date(article.published_date) }}</small>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="#" class="article-link article-title-link" data-article-id="{{ article.id }}">{{ article.title }}</a>
+                    </h5>
+                    {% if article.summary %}
+                    <p class="card-text">{{ article.summary[:100] }}{% if article.summary|length > 100 %}...{% endif %}</p>
+                    {% else %}
+                    <p class="card-text text-muted">
+                        {% if article.processing_status == 'pending_llm' %}
+                        Waiting for summary...
+                        {% elif article.processing_status == 'pending_content' %}
+                        Waiting for content extraction...
+                        {% elif article.processing_status == 'llm_error' %}
+                        Error generating summary
+                        {% else %}
+                        No summary available
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    
+                    {% if article.keywords %}
+                    <div class="mt-2">
+                        {% for keyword in article.keywords.split(',') %}
+                        <span class="badge bg-secondary">{{ keyword.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if current_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('index', page=current_page-1, feed_id=selected_feed_id, keyword=selected_keyword, per_page=per_page) }}">Previous</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in range(1, total_pages + 1) %}
+                        {% if i == current_page %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% elif i <= 3 or i >= total_pages - 2 or (i >= current_page - 1 and i <= current_page + 1) %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('index', page=i, feed_id=selected_feed_id, keyword=selected_keyword, per_page=per_page) }}">{{ i }}</a>
+                        </li>
+                        {% elif i == 4 or i == total_pages - 3 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if current_page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('index', page=current_page+1, feed_id=selected_feed_id, keyword=selected_keyword, per_page=per_page) }}">Next</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                No articles found. Try polling feeds or adjusting your filters.
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Side Panel -->
+    <div class="side-panel-container">
+        <!-- Placeholder (shown when no article is selected) -->
+        <div class="card side-panel-placeholder" id="side-panel-placeholder">
+            <div class="card-body text-center">
+                <i class="fas fa-newspaper"></i>
+                <h3>No Article Selected</h3>
+                <p class="text-muted">Click on an article title to view its contents here.</p>
+            </div>
+        </div>
+        
+        <!-- Actual Side Panel (initially hidden on mobile) -->
+        <div class="card side-panel {% if request.args.get('article_id') is none and is_mobile %}d-none{% endif %}" id="side-panel">
+            <div class="card-header side-panel-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Article Details</h5>
+                <button type="button" class="btn-close mobile-back-button" id="close-panel" aria-label="Close"></button>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div class="loading-indicator" id="loading-indicator">
+                <div class="spinner-border loading-spinner text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            
+            <!-- Article Content -->
+            <div class="card-body d-none" id="article-content">
+                <!-- Content will be loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add mobile detection for initial state
+    document.addEventListener('DOMContentLoaded', function() {
+        const isMobile = window.innerWidth < 768;
+        document.body.setAttribute('data-is-mobile', isMobile);
+    });
+</script>
+{% endblock %}

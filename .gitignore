@@ -1,0 +1,13 @@
+# Virtual environment
+venv/
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env
+
+# Database
+instance/
+
+# Logs
+*.log

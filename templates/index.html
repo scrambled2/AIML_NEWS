@@ -1,0 +1,497 @@
+{% extends 'base.html' %}
+
+{% block title %}AI/ML News Aggregator - Latest Articles{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>Latest AI/ML News</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <form action="{{ url_for('poll_now') }}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-primary">Poll Feeds Now</button>
+        </form>
+        <form action="{{ url_for('process_pending') }}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-secondary">Process Pending</button>
+        </form>
+
+        <!-- Enhanced ArXiv Extraction Controls -->
+        <div class="btn-group">
+            <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                Extract ArXiv
+            </button>
+            <ul class="dropdown-menu">
+                <li><h6 class="dropdown-header">Processing Options</h6></li>
+                <li>
+                    <form action="{{ url_for('extract_arxiv') }}" method="post" class="px-3 py-2">
+                        <div class="mb-2">
+                            <label for="batch_size" class="form-label small">Batch Size:</label>
+                            <select name="batch_size" id="batch_size" class="form-select form-select-sm">
+                                <option value="50">50 articles</option>
+                                <option value="100" selected>100 articles</option>
+                                <option value="200">200 articles</option>
+                                <option value="500">500 articles</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="continuous" value="true" id="continuous">
+                                <label class="form-check-label small" for="continuous">
+                                    Continuous Processing
+                                </label>
+                            </div>
+                            <small class="text-muted">Process all pending articles</small>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm w-100">Start Processing</button>
+                    </form>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <div class="px-3 py-2">
+                        <small class="text-muted">Processing Status:</small>
+                        <div id="processing-status-mini" class="small">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            Loading...
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Add this script to update processing status -->
+<script>
+// Update processing status periodically
+function updateProcessingStatus() {
+    fetch('/api/arxiv-processing-status')
+        .then(response => response.json())
+        .then(data => {
+            const statusDiv = document.getElementById('processing-status-mini');
+            if (statusDiv) {
+                statusDiv.innerHTML = `
+                    <div class="text-warning">📋 ${data.pending_extraction} pending</div>
+                    <div class="text-info">⚡ ${data.currently_processing} processing</div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error updating status:', error);
+        });
+}
+
+// Update status on page load and every 30 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    updateProcessingStatus();
+    setInterval(updateProcessingStatus, 30000);
+});
+</script>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Filters</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('index') }}" method="get" class="row g-3">
+            <div class="col-md-2">
+                <label for="feed_id" class="form-label">Source</label>
+                <select name="feed_id" id="feed_id" class="form-select">
+                    <option value="">All Sources</option>
+                    {% for feed in feeds %}
+                    <option value="{{ feed.id }}" {% if selected_feed_id == feed.id %}selected{% endif %}>
+                        {{ feed.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="keyword" class="form-label">Keyword</label>
+                <input type="text" class="form-control" id="keyword" name="keyword" placeholder="Filter by keyword" value="{{ selected_keyword or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label for="sort_by" class="form-label">Sort By</label>
+                <select name="sort_by" id="sort_by" class="form-select">
+                    <option value="date_desc" {% if sort_by == 'date_desc' or not sort_by %}selected{% endif %}>Date (Newest)</option>
+                    <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Date (Oldest)</option>
+                    <option value="title_asc" {% if sort_by == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                    <option value="title_desc" {% if sort_by == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                    <option value="feed_asc" {% if sort_by == 'feed_asc' %}selected{% endif %}>Source (A-Z)</option>
+                    <option value="feed_desc" {% if sort_by == 'feed_desc' %}selected{% endif %}>Source (Z-A)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="per_page" class="form-label">Items Per Page</label>
+                <select name="per_page" id="per_page" class="form-select">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 20 or not per_page %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ArXiv Processing Dashboard with Live Updates -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-graduation-cap text-primary"></i> ArXiv Processing Status</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadArxivStats()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-bs-toggle="dropdown">
+                    Quick Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <form action="{{ url_for('extract_arxiv') }}" method="post" class="dropdown-item">
+                            <input type="hidden" name="batch_size" value="100">
+                            <input type="hidden" name="continuous" value="false">
+                            <button type="submit" class="btn btn-sm btn-success">Process 100 Articles</button>
+                        </form>
+                    </li>
+                    <li>
+                        <form action="{{ url_for('extract_arxiv') }}" method="post" class="dropdown-item">
+                            <input type="hidden" name="batch_size" value="200">
+                            <input type="hidden" name="continuous" value="true">
+                            <button type="submit" class="btn btn-sm btn-warning">Process All Remaining</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row" id="arxiv-stats-container">
+            <!-- Stats will be loaded via JavaScript -->
+            <div class="col text-center">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <small class="d-block text-muted">Loading ArXiv statistics...</small>
+            </div>
+        </div>
+
+        <!-- Processing Progress Bar -->
+        <div class="row mt-3">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">Overall Progress</small>
+                    <small class="text-muted" id="progress-text">0%</small>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success" id="extraction-progress" style="width: 0%"></div>
+                    <div class="progress-bar bg-info" id="analysis-progress" style="width: 0%"></div>
+                </div>
+                <small class="text-muted">
+                    <span class="badge bg-success">Content Extraction</span>
+                    <span class="badge bg-info">Deep Analysis</span>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Side Panel Layout -->
+<div class="side-panel-layout">
+    <!-- Article List -->
+    <div class="article-list-container" id="article-list">
+        {% if articles %}
+            {% for article in articles %}
+<div class="card mb-3 article-card" id="article-card-{{ article.id }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <small class="text-muted">{{ article.feed_name }}</small>
+
+            <!-- ArXiv indicator -->
+            {% if article.arxiv_id %}
+                <span class="badge bg-info ms-2" title="ArXiv Paper ID: {{ article.arxiv_id }}">
+                    <i class="fas fa-graduation-cap"></i> ArXiv
+                </span>
+            {% endif %}
+
+            <!-- Full content indicator -->
+            {% if article.full_content_status == 'extracted' %}
+                <span class="badge bg-success ms-1" title="Full content available">
+                    <i class="fas fa-file-alt"></i> Full
+                </span>
+            {% elif article.full_content_status == 'pending' %}
+                <span class="badge bg-warning ms-1" title="Extracting full content">
+                    <i class="fas fa-clock"></i> Extracting
+                </span>
+            {% endif %}
+
+            <!-- Deep summary indicator -->
+            {% if article.deep_summary_status == 'completed' %}
+                <span class="badge bg-primary ms-1" title="Deep analysis available">
+                    <i class="fas fa-brain"></i> Deep
+                </span>
+            {% elif article.deep_summary_status == 'pending' %}
+                <span class="badge bg-warning ms-1" title="Generating deep analysis">
+                    <i class="fas fa-clock"></i> Analyzing
+                </span>
+            {% endif %}
+        </div>
+        <small class="text-muted">{{ format_date(article.published_date) }}</small>
+    </div>
+    <div class="card-body">
+        <h5 class="card-title">
+            <a href="#" class="article-link article-title-link" data-article-id="{{ article.id }}">{{ article.title }}</a>
+        </h5>
+        {% if article.summary %}
+        <p class="card-text">{{ article.summary[:100] }}{% if article.summary|length > 100 %}...{% endif %}</p>
+        {% else %}
+        <p class="card-text text-muted">
+            {% if article.processing_status == 'pending_llm' %}
+            Waiting for summary...
+            {% elif article.processing_status == 'pending_content' %}
+            Waiting for content extraction...
+            {% elif article.processing_status == 'llm_error' %}
+            Error generating summary
+            {% else %}
+            No summary available
+            {% endif %}
+        </p>
+        {% endif %}
+
+        {% if article.keywords %}
+        <div class="mt-2">
+            {% for keyword in article.keywords.split(',') %}
+            <span class="badge bg-secondary">{{ keyword.strip() }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if current_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('index', page=current_page-1, feed_id=selected_feed_id, keyword=selected_keyword, per_page=per_page, sort_by=sort_by) }}">Previous</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                    {% endif %}
+
+                    {% for i in range(1, total_pages + 1) %}
+                        {% if i == current_page %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% elif i <= 3 or i >= total_pages - 2 or (i >= current_page - 1 and i <= current_page + 1) %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('index', page=i, feed_id=selected_feed_id, keyword=selected_keyword, per_page=per_page, sort_by=sort_by) }}">{{ i }}</a>
+                        </li>
+                        {% elif i == 4 or i == total_pages - 3 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if current_page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('index', page=current_page+1, feed_id=selected_feed_id, keyword=selected_keyword, per_page=per_page, sort_by=sort_by) }}">Next</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                No articles found. Try polling feeds or adjusting your filters.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel-container">
+        <!-- Placeholder (shown when no article is selected) -->
+        <div class="card side-panel-placeholder" id="side-panel-placeholder">
+            <div class="card-body text-center">
+                <i class="fas fa-newspaper"></i>
+                <h3>No Article Selected</h3>
+                <p class="text-muted">Click on an article title to view its contents here.</p>
+            </div>
+        </div>
+
+        <!-- Actual Side Panel (initially hidden) -->
+        <div class="card side-panel d-none" id="side-panel">
+            <div class="card-header side-panel-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Article Details</h5>
+                <button type="button" class="btn-close mobile-back-button" id="close-panel" aria-label="Close"></button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div class="loading-indicator" id="loading-indicator">
+                <div class="spinner-border loading-spinner text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Article Content -->
+            <div class="card-body d-none" id="article-content">
+                <!-- Content will be loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add mobile detection for initial state
+    document.addEventListener('DOMContentLoaded', function() {
+        const isMobile = window.innerWidth < 768;
+        document.body.setAttribute('data-is-mobile', isMobile);
+    });
+
+    // Load ArXiv statistics on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadArxivStats();
+        monitorProcessing();
+        setInterval(monitorProcessing, 30000); // Check every 30 seconds
+    });
+
+    function loadArxivStats() {
+        fetch('/api/arxiv-stats')
+            .then(response => response.json())
+            .then(data => {
+                displayArxivStats(data);
+            })
+            .catch(error => {
+                console.error('Error loading ArXiv stats:', error);
+                document.getElementById('arxiv-stats-container').innerHTML = `
+                    <div class="col text-center">
+                        <small class="text-danger">Error loading statistics</small>
+                    </div>
+                `;
+            });
+    }
+
+    // Enhanced stats loading with progress bars
+    function displayArxivStats(stats) {
+        const extractionPercentage = stats.total_arxiv > 0 ?
+            Math.round((stats.extraction.extracted / stats.total_arxiv) * 100) : 0;
+
+        const analysisPercentage = stats.extraction.extracted > 0 ?
+            Math.round((stats.deep_summary.completed / stats.extraction.extracted) * 100) : 0;
+
+        const overallProgress = stats.total_arxiv > 0 ?
+            Math.round(((stats.extraction.extracted + stats.deep_summary.completed) / (stats.total_arxiv * 2)) * 100) : 0;
+
+        const pendingExtraction = stats.extraction.not_applicable + stats.extraction.pending;
+
+        document.getElementById('arxiv-stats-container').innerHTML = `
+            <div class="col-md-2">
+                <div class="text-center">
+                    <h4 class="text-primary mb-1">${stats.total_arxiv}</h4>
+                    <small class="text-muted">Total ArXiv Papers</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="text-center">
+                    <h4 class="text-success mb-1">${stats.extraction.extracted}</h4>
+                    <small class="text-muted">Full Content Extracted</small>
+                    <div class="progress mt-1" style="height: 4px;">
+                        <div class="progress-bar bg-success" style="width: ${extractionPercentage}%"></div>
+                    </div>
+                    <small class="text-muted">${extractionPercentage}%</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="text-center">
+                    <h4 class="text-info mb-1">${stats.content_types.full_papers}</h4>
+                    <small class="text-muted">Full Papers</small>
+                    <br>
+                    <small class="badge bg-light text-dark">${stats.content_types.abstracts_plus} Enhanced Abstracts</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="text-center">
+                    <h4 class="text-purple mb-1">${stats.deep_summary.completed}</h4>
+                    <small class="text-muted">Deep Analysis Done</small>
+                    <div class="progress mt-1" style="height: 4px;">
+                        <div class="progress-bar" style="background: linear-gradient(45deg, #6610f2, #e83e8c); width: ${analysisPercentage}%"></div>
+                    </div>
+                    <small class="text-muted">${analysisPercentage}%</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="text-center">
+                    <h4 class="text-warning mb-1">${pendingExtraction}</h4>
+                    <small class="text-muted">Pending Processing</small>
+                    ${stats.extraction.pending > 0 ? `<br><small class="badge bg-warning text-dark">${stats.extraction.pending} Extracting</small>` : ''}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="text-center">
+                    <h4 class="text-secondary mb-1">${stats.recent_arxiv}</h4>
+                    <small class="text-muted">New This Week</small>
+                </div>
+            </div>
+        `;
+
+        // Update progress bars
+        document.getElementById('extraction-progress').style.width = `${extractionPercentage/2}%`;
+        document.getElementById('analysis-progress').style.width = `${analysisPercentage/2}%`;
+        document.getElementById('progress-text').textContent = `${overallProgress}% Complete`;
+    }
+
+    // Auto-refresh stats every 60 seconds when processing
+    let statsInterval;
+
+    function startStatsMonitoring() {
+        if (statsInterval) clearInterval(statsInterval);
+        statsInterval = setInterval(loadArxivStats, 60000);
+    }
+
+    function stopStatsMonitoring() {
+        if (statsInterval) clearInterval(statsInterval);
+    }
+
+    // Monitor for processing activity
+    let lastExtractedCount = 0;
+    function monitorProcessing() {
+        fetch('/api/arxiv-stats')
+            .then(response => response.json())
+            .then(data => {
+                const currentExtracted = data.extraction.extracted;
+                if (currentExtracted > lastExtractedCount) {
+                    // Processing is happening, start monitoring
+                    startStatsMonitoring();
+                    lastExtractedCount = currentExtracted;
+                } else if (data.extraction.pending === 0) {
+                    // No processing happening, stop monitoring
+                    stopStatsMonitoring();
+                }
+            })
+            .catch(error => console.error('Error monitoring processing:', error));
+    }
+
+    // Refresh stats after manual processing
+    document.querySelector('form[action*="extract-arxiv"]')?.addEventListener('submit', function() {
+        setTimeout(() => {
+            loadArxivStats();
+        }, 2000);
+    });
+
+    document.querySelector('form[action*="process-pending"]')?.addEventListener('submit', function() {
+        setTimeout(() => {
+            loadArxivStats();
+        }, 2000);
+    });
+</script>
+{% endblock %}

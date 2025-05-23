@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Import Feeds - AI/ML News Aggregator{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('feeds') }}">Feeds</a></li>
+        <li class="breadcrumb-item active">Import Feeds</li>
+    </ol>
+</nav>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Import Feeds from JSON</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('import_feeds') }}" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="file" class="form-label">JSON File</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".json" required>
+                <small class="text-muted">Select a JSON file containing feed definitions.</small>
+            </div>
+            
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="overwrite" name="overwrite">
+                <label class="form-check-label" for="overwrite">Overwrite existing feeds</label>
+                <small class="d-block text-muted">
+                    If checked, existing feeds with the same URL will be updated with values from the import.
+                    If unchecked, existing feeds will be skipped.
+                </small>
+            </div>
+            
+            <div class="mb-3">
+                <p><strong>Expected JSON Format:</strong></p>
+                <pre class="bg-light p-3 border rounded"><code>{
+  "feeds": [
+    {
+      "name": "Feed Name",
+      "url": "https://example.com/feed.xml",
+      "enabled": true,
+      "polling_interval": 30,
+      "max_articles": 100,
+      "display_order": 1
+    },
+    ...
+  ]
+}</code></pre>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">Import Feeds</button>
+                <a href="{{ url_for('feeds') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{
+    "polling_interval_minutes": 30,
+    "max_concurrent_feeds": 5,
+    "store_content_level": "summary_only",
+    "openai_model": "gpt-4.1-mini",
+    "summary_max_tokens": 150
+}

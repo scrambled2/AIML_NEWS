@@ -1,0 +1,7 @@
+flask==2.3.3
+feedparser==6.0.10
+aiohttp==3.8.5
+asyncio==3.4.3
+beautifulsoup4==4.12.2
+openai==1.6.1
+python-dotenv==1.0.0

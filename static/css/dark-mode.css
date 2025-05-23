@@ -1,0 +1,264 @@
+/* Dark mode styles for AI/ML News Aggregator */
+
+:root {
+    --dark-bg: #121212;
+    --dark-card-bg: #1e1e1e;
+    --dark-text: #ffffff;      /* Brighter white text */
+    --dark-secondary-text: #cccccc; /* Lighter secondary text */
+    --dark-border: #333333;
+    --dark-hover: #2a2a2a;
+    --dark-primary: #a64dff;   /* Brighter purple */
+    --dark-primary-hover: #b366ff;
+    --dark-secondary: #444444;
+    --dark-input-bg: #2c2c2c;
+    --dark-code-bg: #2d2d2d;
+    --dark-light-bg: #2a2a2a;  /* Dark mode equivalent of bg-light */
+}
+
+body.dark-mode {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+}
+
+.dark-mode .navbar {
+    background-color: #000000 !important;
+}
+
+.dark-mode .card {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+
+.dark-mode .card-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: var(--dark-border);
+}
+
+.dark-mode .card-footer {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: var(--dark-border);
+}
+
+.dark-mode .list-group-item {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+
+.dark-mode .list-group-item-action:hover {
+    background-color: var(--dark-hover);
+}
+
+.dark-mode .text-muted {
+    color: var(--dark-secondary-text) !important;
+}
+
+.dark-mode .table {
+    color: var(--dark-text);
+}
+
+.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+.dark-mode .form-control,
+.dark-mode .form-select {
+    background-color: var(--dark-input-bg);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+}
+
+.dark-mode .form-control:focus,
+.dark-mode .form-select:focus {
+    background-color: var(--dark-input-bg);
+    color: var(--dark-text);
+    border-color: var(--dark-primary);
+    box-shadow: 0 0 0 0.25rem rgba(138, 43, 226, 0.25);
+}
+
+.dark-mode .btn-primary {
+    background-color: var(--dark-primary);
+    border-color: var(--dark-primary);
+}
+
+.dark-mode .btn-primary:hover {
+    background-color: var(--dark-primary-hover);
+    border-color: var(--dark-primary-hover);
+}
+
+.dark-mode .btn-outline-primary {
+    color: var(--dark-primary);
+    border-color: var(--dark-primary);
+}
+
+.dark-mode .btn-outline-primary:hover {
+    background-color: var(--dark-primary);
+    color: white;
+}
+
+.dark-mode .btn-secondary {
+    background-color: var(--dark-secondary);
+    border-color: #333333;
+}
+
+.dark-mode .alert-info {
+    background-color: rgba(23, 162, 184, 0.2);
+    border-color: rgba(23, 162, 184, 0.3);
+    color: #9eeaf9;
+}
+
+.dark-mode .alert-success {
+    background-color: rgba(40, 167, 69, 0.2);
+    border-color: rgba(40, 167, 69, 0.3);
+    color: #a3e9b7;
+}
+
+.dark-mode .alert-danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.3);
+    color: #f6b3bc;
+}
+
+.dark-mode .pagination .page-link {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-primary);
+}
+
+.dark-mode .pagination .page-item.active .page-link {
+    background-color: var(--dark-primary);
+    border-color: var(--dark-primary);
+    color: white;
+}
+
+.dark-mode .pagination .page-item.disabled .page-link {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-secondary-text);
+}
+
+.dark-mode .footer {
+    background-color: #000000 !important;
+    color: var(--dark-secondary-text);
+}
+
+.dark-mode pre, 
+.dark-mode code {
+    background-color: var(--dark-code-bg);
+    color: #e0e0e0;
+}
+
+.dark-mode .breadcrumb {
+    background-color: transparent;
+}
+
+.dark-mode .badge.bg-secondary {
+    background-color: #666666 !important;
+    color: white;
+}
+
+/* Fix for bg-light in dark mode */
+.dark-mode .bg-light {
+    background-color: var(--dark-light-bg) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Theme toggle button styling */
+.theme-toggle {
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    margin-right: 15px;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.theme-toggle:hover {
+    color: white;
+}
+
+.theme-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover i {
+    transform: rotate(30deg);
+}
+
+/* Additional improvements for dark mode readability */
+.dark-mode a {
+    color: #80b3ff;  /* Brighter blue for links */
+}
+
+.dark-mode a:hover {
+    color: #99ccff;
+}
+
+.dark-mode .card-title a {
+    color: #b3d9ff;  /* Even brighter for card titles */
+}
+
+.dark-mode .card-title a:hover {
+    color: #cce6ff;
+    text-decoration: underline;
+}
+
+.dark-mode .card-text {
+    color: #f0f0f0;
+}
+
+.dark-mode .alert-info {
+    color: #d9edf7;
+    background-color: rgba(23, 162, 184, 0.2);
+    border-color: rgba(23, 162, 184, 0.3);
+}
+
+.dark-mode .breadcrumb-item.active {
+    color: #cccccc;
+}
+
+.dark-mode .breadcrumb-item a {
+    color: #80b3ff;
+}
+
+.dark-mode .form-control::placeholder,
+.dark-mode .form-select::placeholder {
+    color: #888888;
+}
+
+/* Make article titles stand out more */
+.dark-mode h1, 
+.dark-mode h2, 
+.dark-mode h3, 
+.dark-mode h4, 
+.dark-mode h5, 
+.dark-mode h6 {
+    color: #ffffff;
+}
+
+/* Improve button contrast */
+.dark-mode .btn-outline-primary {
+    border-color: var(--dark-primary);
+    color: var(--dark-primary);
+}
+
+.dark-mode .btn-outline-secondary {
+    border-color: #999999;
+    color: #dddddd;
+}
+
+/* Improve filter card readability */
+.dark-mode .card-header h5 {
+    color: white;
+    font-weight: 500;
+}
+
+/* Ensure form labels are visible */
+.dark-mode .form-label {
+    color: #dddddd;
+}

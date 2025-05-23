@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ article.title }} - AI/ML News Aggregator{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+        <li class="breadcrumb-item active">Article Details</li>
+    </ol>
+</nav>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="badge bg-primary">{{ article.feed_name }}</span>
+            <small class="text-muted">Published: {{ format_date(article.published_date) }}</small>
+        </div>
+    </div>
+    <div class="card-body">
+        <h1 class="card-title">{{ article.title }}</h1>
+        
+        <div class="mb-4">
+            <a href="{{ article.link }}" class="btn btn-primary" target="_blank">View Original Article</a>
+        </div>
+        
+        {% if keywords %}
+        <div class="mb-4">
+            <h6>Keywords:</h6>
+            <div>
+                {% for keyword in keywords %}
+                <a href="{{ url_for('index', keyword=keyword) }}" class="badge bg-secondary text-decoration-none me-1">{{ keyword }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if article.summary %}
+        <div class="mb-4">
+            <h4>Summary</h4>
+            <div class="p-3 bg-light rounded">
+                <p>{{ article.summary }}</p>
+            </div>
+            {% if article.llm_model_used %}
+            <small class="text-muted">Generated using {{ article.llm_model_used }} on {{ format_date(article.llm_processed_date) }}</small>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if article.raw_content %}
+        <div class="mb-4">
+            <h4>Content</h4>
+            <div class="article-content border p-3 rounded" style="max-height: 500px; overflow-y: auto;">
+                {{ article.raw_content|safe }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="card-footer text-muted">
+        <div class="row">
+            <div class="col">
+                Added to database: {{ format_date(article.fetched_date) }}
+            </div>
+            <div class="col text-end">
+                Status: {{ article.processing_status }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

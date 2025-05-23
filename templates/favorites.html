@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+
+{% block title %}Favorites - AI/ML News Aggregator{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="fas fa-heart text-danger"></i> Favorite Articles</h1>
+        <p class="text-muted">{{ total_count }} articles saved</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> Back to Articles
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Filters</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('favorites') }}" method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="tag_filter" class="form-label">Tag Filter</label>
+                <select name="tag_filter" id="tag_filter" class="form-select">
+                    <option value="">All Tags</option>
+                    {% for tag in all_tags %}
+                    <option value="{{ tag }}" {% if selected_tag == tag %}selected{% endif %}>
+                        {{ tag }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="sort_by" class="form-label">Sort By</label>
+                <select name="sort_by" id="sort_by" class="form-select">
+                    <option value="date_desc" {% if sort_by == 'date_desc' or not sort_by %}selected{% endif %}>Added (Newest)</option>
+                    <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Added (Oldest)</option>
+                    <option value="published_desc" {% if sort_by == 'published_desc' %}selected{% endif %}>Published (Newest)</option>
+                    <option value="title_asc" {% if sort_by == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                    <option value="title_desc" {% if sort_by == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="per_page" class="form-label">Items Per Page</label>
+                <select name="per_page" id="per_page" class="form-select">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 20 or not per_page %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Side Panel Layout -->
+<div class="side-panel-layout">
+    <!-- Favorites List -->
+    <div class="article-list-container" id="article-list">
+        {% if favorites %}
+            {% for favorite in favorites %}
+            <div class="card mb-3 article-card" id="article-card-{{ favorite.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-heart text-danger me-2"></i>
+                        <small class="text-muted">{{ favorite.feed_name }}</small>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted d-block">Published: {{ format_date(favorite.published_date) }}</small>
+                        <small class="text-muted">Favorited: {{ format_date(favorite.favorited_date) }}</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="#" class="article-link article-title-link" data-article-id="{{ favorite.id }}">{{ favorite.title }}</a>
+                    </h5>
+                    
+                    {% if favorite.favorite_notes %}
+                    <div class="alert alert-info p-2 mb-2">
+                        <small><strong>My Notes:</strong> {{ favorite.favorite_notes }}</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if favorite.summary %}
+                    <p class="card-text">{{ favorite.summary[:100] }}{% if favorite.summary|length > 100 %}...{% endif %}</p>
+                    {% else %}
+                    <p class="card-text text-muted">No summary available</p>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if favorite.favorite_tags %}
+                                {% for tag in favorite.favorite_tags.split(',') %}
+                                <span class="badge bg-warning text-dark me-1">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if favorite.keywords %}
+                                {% for keyword in favorite.keywords.split(',') %}
+                                <span class="badge bg-secondary me-1">{{ keyword.strip() }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        
+                        <button class="btn btn-sm btn-outline-danger remove-favorite" 
+                                data-article-id="{{ favorite.id }}" 
+                                title="Remove from favorites">
+                            <i class="fas fa-heart-broken"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if current_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('favorites', page=current_page-1, tag_filter=selected_tag, per_page=per_page, sort_by=sort_by) }}">Previous</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in range(1, total_pages + 1) %}
+                        {% if i == current_page %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% elif i <= 3 or i >= total_pages - 2 or (i >= current_page - 1 and i <= current_page + 1) %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('favorites', page=i, tag_filter=selected_tag, per_page=per_page, sort_by=sort_by) }}">{{ i }}</a>
+                        </li>
+                        {% elif i == 4 or i == total_pages - 3 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if current_page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('favorites', page=current_page+1, tag_filter=selected_tag, per_page=per_page, sort_by=sort_by) }}">Next</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-heart-broken fa-3x mb-3 text-muted"></i>
+                <h4>No Favorite Articles Yet</h4>
+                <p class="text-muted">
+                    Start adding articles to your favorites by clicking the heart icon on any article.
+                </p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Browse Articles
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Side Panel -->
+    <div class="side-panel-container">
+        <!-- Placeholder (shown when no article is selected) -->
+        <div class="card side-panel-placeholder" id="side-panel-placeholder">
+            <div class="card-body text-center">
+                <i class="fas fa-heart"></i>
+                <h3>No Article Selected</h3>
+                <p class="text-muted">Click on an article title to view its contents and manage favorite details.</p>
+            </div>
+        </div>
+        
+        <!-- Actual Side Panel (initially hidden) -->
+        <div class="card side-panel d-none" id="side-panel">
+            <div class="card-header side-panel-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Article Details</h5>
+                <button type="button" class="btn-close mobile-back-button" id="close-panel" aria-label="Close"></button>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div class="loading-indicator" id="loading-indicator">
+                <div class="spinner-border loading-spinner text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            
+            <!-- Article Content -->
+            <div class="card-body d-none" id="article-content">
+                <!-- Content will be loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentArticleId = null;
+    
+    // Handle remove favorite buttons
+    document.querySelectorAll('.remove-favorite').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const articleId = this.getAttribute('data-article-id');
+            
+            if (confirm('Remove this article from favorites?')) {
+                fetch(`/api/favorite/${articleId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Fade out and remove the card
+                        const card = document.getElementById(`article-card-${articleId}`);
+                        card.style.transition = 'opacity 0.3s';
+                        card.style.opacity = '0';
+                        setTimeout(() => {
+                            card.remove();
+                            // Reload page if no articles left
+                            if (document.querySelectorAll('.article-card').length === 0) {
+                                location.reload();
+                            }
+                        }, 300);
+                    } else {
+                        alert('Error removing favorite: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Network error occurred');
+                });
+            }
+        });
+    });
+    
+    // Add mobile detection for initial state
+    const isMobile = window.innerWidth < 768;
+    document.body.setAttribute('data-is-mobile', isMobile);
+});
+</script>
+{% endblock %}

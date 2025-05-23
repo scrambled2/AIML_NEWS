@@ -1,0 +1,401 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Feeds - AI/ML News Aggregator{% endblock %}
+
+{% block content %}
+<h1>Manage RSS Feeds</h1>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Add New Feed</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('add_feed') }}" method="post" class="row g-3">
+            <div class="col-md-5">
+                <label for="url" class="form-label">Feed URL</label>
+                <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com/feed.xml" required>
+            </div>
+            <div class="col-md-5">
+                <label for="name" class="form-label">Feed Name (Optional)</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="My Feed">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Add Feed</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Feed Management</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <a href="{{ url_for('export_feeds') }}" class="btn btn-success mb-3">
+                    <i class="fas fa-file-export"></i> Export Feeds
+                </a>
+                <a href="{{ url_for('import_feeds') }}" class="btn btn-info mb-3 ms-2">
+                    <i class="fas fa-file-import"></i> Import Feeds
+                </a>
+                <p class="text-muted small">
+                    Export your feed configuration as JSON for backup or transfer to another system.
+                    Import previously exported feed configurations.
+                </p>
+            </div>
+            <div class="col-md-6">
+                <form action="{{ url_for('clean_keywords') }}" method="post" class="mb-3">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fas fa-broom"></i> Clean Orphaned Keywords
+                    </button>
+                </form>
+                <p class="text-muted small">
+                    This will remove any keywords not associated with any articles.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Current Feeds</h5>
+    </div>
+    <div class="card-body">
+        {% if feeds %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>URL</th>
+                            <th>Articles</th>
+                            <th>Max Articles</th>
+                            <th>Polling</th>
+                            <th>Last Polled</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for feed in feeds %}
+                        <tr>
+                            <td>{{ feed.name }}</td>
+                            <td>
+                                <a href="{{ feed.url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 250px;">
+                                    {{ feed.url }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ feed.article_count or 0 }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <input type="number"
+                                           class="form-control form-control-sm max-articles-input"
+                                           data-feed-id="{{ feed.id }}"
+                                           value="{{ feed.max_articles or 100 }}"
+                                           min="10"
+                                           max="50000"
+                                           style="width: 80px;">
+                                    <button class="btn btn-sm btn-outline-primary ms-1 update-max-articles"
+                                            data-feed-id="{{ feed.id }}"
+                                            title="Update Max Articles">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                {{ feed.polling_interval|default(30) }} min
+                            </td>
+                            <td>
+                                {% if feed.last_successful_poll_timestamp %}
+                                    <small>{{ format_date(feed.last_successful_poll_timestamp) }}</small>
+                                {% else %}
+                                    <small class="text-muted">Never</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if feed.is_enabled %}
+                                    <span class="badge bg-success">Enabled</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Disabled</span>
+                                {% endif %}
+                                {% if feed.error_count > 0 %}
+                                    <span class="badge bg-warning text-dark">Errors: {{ feed.error_count }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('index', feed_id=feed.id) }}" class="btn btn-sm btn-outline-primary" title="View Articles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('edit_feed', feed_id=feed.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit Feed">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ url_for('toggle_feed_status', feed_id=feed.id) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-{% if feed.is_enabled %}warning{% else %}success{% endif %}"
+                                                title="{% if feed.is_enabled %}Disable{% else %}Enable{% endif %} Feed">
+                                            <i class="fas fa-{% if feed.is_enabled %}pause{% else %}play{% endif %}"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('delete_feed', feed_id=feed.id) }}" method="post" class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this feed and ALL its articles? This cannot be undone.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Feed">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h5>Total Feeds</h5>
+                            <h2>{{ feeds|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h5>Total Articles</h5>
+                            <h2>{{ feeds|sum(attribute='article_count') or 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h5>Active Feeds</h5>
+                            <h2>{{ feeds|selectattr('is_enabled')|list|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ArXiv Feed Breakdown -->
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-graduation-cap"></i> ArXiv Content Breakdown by Feed</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Feed Name</th>
+                                    <th>Total Articles</th>
+                                    <th>ArXiv Papers</th>
+                                    <th>Content Extracted</th>
+                                    <th>Deep Analysis</th>
+                                    <th>Extraction Rate</th>
+                                    <th>Analysis Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="arxiv-feed-breakdown">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        Loading ArXiv breakdown...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No feeds have been added yet. Add your first feed using the form above.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Graceful Shutdown Button -->
+<div class="card mt-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">Administration</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('shutdown') }}" method="post" class="d-inline"
+              onsubmit="return confirm('Are you sure you want to shut down the server? This will stop all polling and processing.');">
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-power-off"></i> Graceful Shutdown
+            </button>
+        </form>
+        <p class="text-muted mt-2">
+            This will gracefully shut down the server, stopping all polling and processing tasks.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- AJAX for updating max articles -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle max articles updates
+    document.querySelectorAll('.update-max-articles').forEach(button => {
+        button.addEventListener('click', function() {
+            const feedId = this.getAttribute('data-feed-id');
+            const input = document.querySelector(`.max-articles-input[data-feed-id="${feedId}"]`);
+            const maxArticles = parseInt(input.value);
+
+            // Validate input
+            if (maxArticles < 10 || maxArticles > 50000) {
+                alert('Max articles must be between 10 and 50,000');
+                return;
+            }
+
+            // Disable button during request
+            const originalHtml = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            this.disabled = true;
+
+            // Send AJAX request
+            fetch(`/feeds/update-max-articles/${feedId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `max_articles=${maxArticles}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success feedback
+                    this.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    setTimeout(() => {
+                        this.innerHTML = originalHtml;
+                        this.disabled = false;
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                    this.innerHTML = originalHtml;
+                    this.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
+                this.innerHTML = originalHtml;
+                this.disabled = false;
+            });
+        });
+    });
+
+    // Allow Enter key to trigger update
+    document.querySelectorAll('.max-articles-input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const feedId = this.getAttribute('data-feed-id');
+                const button = document.querySelector(`.update-max-articles[data-feed-id="${feedId}"]`);
+                button.click();
+            }
+        });
+    });
+});
+</script>
+
+<script>
+// Load ArXiv feed breakdown on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadArxivFeedBreakdown();
+});
+
+function loadArxivFeedBreakdown() {
+    fetch('/api/arxiv-feed-breakdown')
+        .then(response => response.json())
+        .then(data => {
+            displayArxivFeedBreakdown(data);
+        })
+        .catch(error => {
+            console.error('Error loading ArXiv feed breakdown:', error);
+            document.getElementById('arxiv-feed-breakdown').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger">Error loading breakdown</td>
+                </tr>
+            `;
+        });
+}
+
+function displayArxivFeedBreakdown(feeds) {
+    if (feeds.length === 0) {
+        document.getElementById('arxiv-feed-breakdown').innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center text-muted">No ArXiv feeds found</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const tbody = document.getElementById('arxiv-feed-breakdown');
+    tbody.innerHTML = feeds.map(feed => {
+        const extractionRate = feed.arxiv_articles > 0 ?
+            Math.round((feed.extracted_articles / feed.arxiv_articles) * 100) : 0;
+
+        const analysisRate = feed.extracted_articles > 0 ?
+            Math.round((feed.analyzed_articles / feed.extracted_articles) * 100) : 0;
+
+        const extractionBarColor = extractionRate >= 80 ? 'success' : extractionRate >= 50 ? 'warning' : 'danger';
+        const analysisBarColor = analysisRate >= 80 ? 'info' : analysisRate >= 50 ? 'warning' : 'secondary';
+
+        return `
+            <tr>
+                <td>
+                    <strong>${feed.name}</strong>
+                    <br>
+                    <small class="text-muted">ID: ${feed.id}</small>
+                </td>
+                <td>
+                    <span class="badge bg-light text-dark">${feed.total_articles}</span>
+                </td>
+                <td>
+                    <span class="badge bg-primary">${feed.arxiv_articles}</span>
+                    ${feed.arxiv_articles === feed.total_articles ?
+                        '<small class="text-success d-block">100% ArXiv</small>' :
+                        `<small class="text-muted d-block">${Math.round((feed.arxiv_articles/feed.total_articles)*100)}% ArXiv</small>`
+                    }
+                </td>
+                <td>
+                    <span class="badge bg-success">${feed.extracted_articles}</span>
+                </td>
+                <td>
+                    <span class="badge bg-info">${feed.analyzed_articles}</span>
+                </td>
+                <td>
+                    <div class="progress" style="height: 20px; min-width: 80px;">
+                        <div class="progress-bar bg-${extractionBarColor}"
+                             style="width: ${extractionRate}%"
+                             title="${extractionRate}% extracted">
+                            ${extractionRate}%
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="progress" style="height: 20px; min-width: 80px;">
+                        <div class="progress-bar bg-${analysisBarColor}"
+                             style="width: ${analysisRate}%"
+                             title="${analysisRate}% analyzed">
+                            ${analysisRate}%
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+</script>
+{% endblock %}

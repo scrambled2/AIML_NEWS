@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Feed - AI/ML News Aggregator{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('feeds') }}">Feeds</a></li>
+        <li class="breadcrumb-item active">Edit Feed</li>
+    </ol>
+</nav>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Edit Feed</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('edit_feed', feed_id=feed.id) }}" method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Feed Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ feed.name }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="url" class="form-label">Feed URL</label>
+                <input type="url" class="form-control" id="url" name="url" value="{{ feed.url }}" required>
+            </div>
+            
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="is_enabled" name="is_enabled" {% if feed.is_enabled %}checked{% endif %}>
+                <label class="form-check-label" for="is_enabled">Enabled</label>
+            </div>
+            
+            <div class="mb-3">
+                <label for="polling_interval" class="form-label">Polling Interval (minutes)</label>
+                <input type="number" class="form-control" id="polling_interval" name="polling_interval" 
+                       value="{{ feed.polling_interval }}" min="5" max="1440" required>
+                <small class="text-muted">How often to check for new content (5-1440 minutes)</small>
+            </div>
+            
+            <div class="mb-3">
+                <label for="max_articles" class="form-label">Maximum Articles</label>
+                <input type="number" class="form-control" id="max_articles" name="max_articles" 
+                       value="{{ feed.max_articles }}" min="10" max="50000" required>
+                <small class="text-muted">Maximum number of articles to keep (10-50,000)</small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Statistics</label>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Articles
+                        <span class="badge bg-primary rounded-pill">{{ feed.article_count or 0 }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Error Count
+                        <span class="badge bg-danger rounded-pill">{{ feed.error_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Last Successful Poll
+                        <span>
+                            {% if feed.last_successful_poll_timestamp %}
+                                {{ format_date(feed.last_successful_poll_timestamp) }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Created
+                        <span>
+                            {% if feed.created_at %}
+                                {{ format_date(feed.created_at) }}
+                            {% else %}
+                                Unknown
+                            {% endif %}
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Last Modified
+                        <span>
+                            {% if feed.last_modified %}
+                                {{ format_date(feed.last_modified) }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ url_for('feeds') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
